@@ -49,11 +49,48 @@ impl State {
         true
     }
 
+    /// Returns a piece given a position vector.
     pub fn get_piece(&self, position: &Vector2) -> Piece {
         let index = position.index();
         self.map[[index.0, index.1]]
     }
 
+    /// Checks the state to see if any player has won yet.
+    pub fn check_winner(&self) -> Piece {
+        // Game must be over.
+        if !self.terminal() {
+            return Piece::Empty;
+        }
+        // check rows
+        for line in self.map.rows() {
+            let result = Self::check_line(line);
+            if result != Piece::Empty {
+                return result;
+            }
+        }
+        // check columns
+        for line in self.map.columns() {
+            let result = Self::check_line(line);
+            if result != Piece::Empty {
+                return result;
+            }
+        }
+        // normal diagonal
+        let result = Self::check_line(self.map.diag());
+        if result != Piece::Empty {
+            return result;
+        }
+
+        // weird diagonal
+        let result = Self::check_diag(&self.map);
+        if result != Piece::Empty {
+            return result;
+        }
+
+        Piece::Empty
+    }
+
+    
 
     // PRIVATE
 
@@ -82,6 +119,35 @@ impl State {
             Piece::Empty => Piece::Empty,
         };
         State { map, on_play }
+    }
+
+    fn check_line(line: ArrayView1<Piece>) -> Piece {
+        let first = line[0];
+        if first == Piece::Empty {
+            return Piece::Empty;
+        }
+        for piece in line {
+            if *piece != first {
+                return Piece::Empty;
+            }
+        }
+        first
+    }
+
+    fn check_diag(map: &Array2<Piece>) -> Piece {
+        let dim = map.dim();
+        let first = map[[0, dim.1]];
+        if first == Piece::Empty {
+            return Piece::Empty;
+        }
+        let mut j = dim.1;
+        for i in 0..dim.0 {
+            if map[[i, j]] != first {
+                return Piece::Empty;
+            }
+            j -= 1;
+        }
+        first
     }
 
 }

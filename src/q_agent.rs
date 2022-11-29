@@ -26,7 +26,7 @@ impl QLearningAgent {
         QLearningAgent { Q, player, board_size, actions }
     }
 
-    // Creates the initial set of legal actions.
+    /// Creates the initial set of legal actions.
     fn create_actions(&mut self) -> Vec<(Action, Legal)> {
         let mut actions = Vec::new();
         for i in 0..self.board_size.x {
@@ -46,8 +46,41 @@ impl QLearningAgent {
         }
     }
 
-    fn choose_action(Q: &QTable, actions: &Actions, rng: &mut RandomNumberGenerator, epsilon: f32) {
-        
+    /// Uses the Q-Table to choose the best action, sometimes choosing a random action.
+    /// Returns an index into the action table.
+    fn choose_action(Q: &QTable, actions: &Actions, state: State, 
+        rng: &mut RandomNumberGenerator, epsilon: f32) -> usize {
+        let p = rng.range(0., 1.);
+        if p > epsilon {
+            Self::max_Q(Q, actions, state).0
+        }
+        else {
+            rng.range(0, actions.len())
+        }
+    }
+
+    /// Chooses the action with the highest Q value given some state.
+    /// Returns an index into the action table and the actual Q value.
+    fn max_Q(Q: &QTable, actions: &Actions, state: State) -> (usize, Value) {
+        let mut q_value = 0.;
+        let mut index = 0;
+        let mut k = (state, actions[0].0);
+
+        for (i, (action, legal)) in actions.iter().enumerate() {
+            if *legal {
+                k.1 = *action;
+                match Q.get(&k) {
+                    None => (),
+                    Some((q, frq)) => {
+                        if *q > q_value {
+                            q_value = *q;
+                            index = i;
+                        }
+                    }
+                }
+            }
+        }
+        (index, q_value)
     }
 
     /// Updates the Q value using the Bellman Equation.
@@ -62,7 +95,7 @@ impl QLearningAgent {
             Ok(o) => o,
         };
         // max_q is the largest q value given the next state and set of available actions.
-        let max_q = Self::max_Q(&self.Q, &self.actions, next_state.clone());
+        let max_q = Self::max_Q(&self.Q, &self.actions, next_state.clone()).1;
         let k = (state, *action);
 
         // Search for the entry in the table.
@@ -83,24 +116,9 @@ impl QLearningAgent {
         next_state
     }
 
-    /// Gets the largest Q value from the table given a state and list of legal actions on that state.
-    fn max_Q(Q: &QTable, actions: &Actions, state: State) -> Value {
-        let mut value: Value = 0.;
-        let mut k = (state, actions[0].0);
-
-        for (action, legal) in actions.iter() {
-            if *legal {
-                k.1 = *action;
-                match Q.get(&k) {
-                    None => (),
-                    Some((q, frq)) => {
-                        if *q > value {
-                            value = *q;
-                        }
-                    }
-                }
-            }
-        }
-        value
+    ///
+    pub fn train() {
+        
     }
+
 }
