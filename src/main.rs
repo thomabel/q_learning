@@ -7,6 +7,7 @@ Artificial Intelligence
 mod q_agent;
 mod state;
 mod vector;
+mod game;
 
 fn main() {
     println!("Hello, world!");
