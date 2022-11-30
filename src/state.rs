@@ -1,10 +1,22 @@
 
 use ndarray::prelude::*;
-use crate::vector::Vector2;
+use crate::{vector::Vector2, q_agent::Value};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Piece {
-    Empty, P1, P2
+    Draw = -1, 
+    Empty = 0, 
+    P1, P2
+}
+impl Piece {
+    pub fn to_index(&self) -> usize {
+        match *self {
+            Draw => 0,
+            Empty => 0,
+            P1 => 1,
+            P2 => 2,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -28,18 +40,24 @@ impl State {
         State { map, on_play }
     }
 
+    /// 
+    pub fn play_mut(&mut self, action: &Action) {
+        if self.is_in_bounds(&action.position) && self.is_legal_move(&action) {
+            self.modify_state(action);
+        }
+    }
+
     /// Performs a legal action on this state and returns as a new state, or error if the action was malformed.
     pub fn play(&self, action: Action) -> Result<State, String> {
         if self.is_in_bounds(&action.position) && self.is_legal_move(&action) {
-            Ok(self.modify_state(&action))
+            Ok(self.advance_state(&action))
         }
         else {
             Err("Not a legal move.".to_string())
         }
-        
     }
 
-    /// Checks if this state is a terminal state.
+    /// Checks if this state has any empty spaces left.
     pub fn terminal(&self) -> bool {
         for spot in self.map.iter() {
             if *spot == Piece::Empty {
@@ -55,12 +73,66 @@ impl State {
         self.map[[index.0, index.1]]
     }
 
-    /// Checks the state to see if any player has won yet.
-    pub fn check_winner(&self) -> Piece {
-        // Game must be over.
-        if !self.terminal() {
-            return Piece::Empty;
+    /// Reports the current state of the game.
+    /// Returns the winner.
+    pub fn check_winner(&self, on_play: Piece) -> Piece {
+        let mut winner = self.check_lines();
+        if self.terminal() && winner == Piece::Empty {
+            winner = Piece::Draw;
         }
+        winner
+    }
+
+    /// Which player is on the play?
+    pub fn on_play(&self) -> Piece {
+        self.on_play
+    }
+
+}
+
+impl State {
+    // PRIVATE
+
+    /// Determines if the vector is in bounds of the play area.
+    /// Play area is of size mxn with indicies between 0..m and 0..n
+    fn is_in_bounds(&self, vector: &Vector2) -> bool {
+        let dim = self.map.dim();
+        vector.x >= 0 && vector.x < dim.0 as i32 &&
+        vector.y >= 0 && vector.y < dim.1 as i32
+    }
+    
+    /// When playing only legal moves can be performed.
+    fn is_legal_move(&self, action: &Action) -> bool {
+        let index = action.position.index();
+        self.map[[index.0, index.1]] == Piece::Empty
+    }
+
+    /// Creates a new state by arbitrarily applying some action.
+    fn advance_state(&self, action: &Action) -> State {
+        let mut map = self.map.clone();
+        let index = action.position.index();
+        map[[index.0, index.1]] = action.player;
+        let on_play = match action.player {
+            Piece::P1 => Piece::P2,
+            Piece::P2 => Piece::P1,
+            _ => Piece::Empty,
+        };
+        State { map, on_play }
+    }
+
+    /// In-place morphing of the state.
+    fn modify_state(&mut self, action: &Action) {
+        let index = action.position.index();
+        self.map[[index.0, index.1]] = action.player;
+        self.on_play = match action.player {
+            Piece::P1 => Piece::P2,
+            Piece::P2 => Piece::P1,
+            _ => Piece::Empty,
+        };
+    }
+
+    /// Checks the state to see if any player has won yet.
+    fn check_lines(&self) -> Piece {
         // check rows
         for line in self.map.rows() {
             let result = Self::check_line(line);
@@ -88,37 +160,6 @@ impl State {
         }
 
         Piece::Empty
-    }
-
-    
-
-    // PRIVATE
-
-    /// Determines if the vector is in bounds of the play area.
-    /// Play area is of size mxn with indicies between 0..m and 0..n
-    fn is_in_bounds(&self, vector: &Vector2) -> bool {
-        let dim = self.map.dim();
-        vector.x >= 0 && vector.x < dim.0 as i32 &&
-        vector.y >= 0 && vector.y < dim.1 as i32
-    }
-    
-    /// When playing only legal moves can be performed.
-    fn is_legal_move(&self, action: &Action) -> bool {
-        let index = action.position.index();
-        self.map[[index.0, index.1]] == Piece::Empty
-    }
-
-    /// Creates a new state by arbitrarily applying some action.
-    fn modify_state(&self, action: &Action) -> State {
-        let mut map = self.map.clone();
-        let index = action.position.index();
-        map[[index.0, index.1]] = action.player;
-        let on_play = match action.player {
-            Piece::P1 => Piece::P2,
-            Piece::P2 => Piece::P1,
-            Piece::Empty => Piece::Empty,
-        };
-        State { map, on_play }
     }
 
     fn check_line(line: ArrayView1<Piece>) -> Piece {
@@ -150,4 +191,24 @@ impl State {
         first
     }
 
+}
+
+impl ToString for State {
+    fn to_string(&self) -> String {
+        let mut string = String::new();
+        for row in self.map.rows() {
+            for col in row {
+                let str = 
+                match *col {
+                    Piece::P1 => "-X-",
+                    Piece::P2 => "-O-",
+                    Piece::Empty => "|_|",
+                    _ => "???",
+                };
+                string.push_str(str);
+            }
+            string.push('\n');    
+        }
+        string
+    }
 }

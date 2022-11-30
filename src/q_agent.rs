@@ -6,7 +6,7 @@ use bracket_lib::random::RandomNumberGenerator;
 use crate::state::*;
 use crate::vector::*;
 
-type Value = f64;
+pub type Value = f64;
 type Frequency = u32;
 type Legal = bool;
 type QTable = HashMap<(State, Action), (Value, Frequency)>;
@@ -27,14 +27,21 @@ impl QLearningAgent {
     }
 
     /// Uses the Q-Table to choose the best action, sometimes choosing a random action.
-    pub fn choose_action(&self, state: State, 
-        rng: &mut RandomNumberGenerator, epsilon: f32) -> Result<Action, String> {
-
+    pub fn choose_action(&mut self, state: State, 
+        rng: &mut RandomNumberGenerator, epsilon: Value) -> Result<Action, String> {
+        // Set up
+        self.update_actions(&state);
+        if !Self::legal_actions(&self.actions) {
+            return Err("No legal actions".to_string());
+        }
         let p = rng.range(0., 1.);
+
+        // On-policy/greedy action
         if p > epsilon {
             let index = Self::max_Q_action(&self.Q, &self.actions, state).0;
             Ok(self.actions[index].0)
         }
+        // Random action
         else {
             let len = self.actions.len();
             loop {
@@ -117,6 +124,15 @@ impl QLearningAgent {
         (index, q_value)
     }
 
-    
+    /// Tells if we have any legal actions left.
+    fn legal_actions(actions: &Actions) -> bool {
+        let mut count = 0;
+        for a in actions.iter() {
+            if a.1 {
+                count += 1;
+            }
+        }
+        count == 0
+    }
 
 }
