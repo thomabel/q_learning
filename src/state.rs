@@ -1,23 +1,6 @@
-
 use ndarray::prelude::*;
-use crate::{vector::Vector2, q_agent::Value};
-
-#[derive(PartialEq, Eq, Clone, Copy, Hash)]
-pub enum Piece {
-    Draw = -1, 
-    Empty = 0, 
-    P1, P2
-}
-impl Piece {
-    pub fn to_index(&self) -> usize {
-        match *self {
-            Draw => 0,
-            Empty => 0,
-            P1 => 1,
-            P2 => 2,
-        }
-    }
-}
+use crate::vector::Vector2;
+use crate::piece::Piece;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Action {
@@ -40,20 +23,17 @@ impl State {
         State { map, on_play }
     }
 
-    /// 
-    pub fn play_mut(&mut self, action: &Action) {
-        if self.is_in_bounds(&action.position) && self.is_legal_move(&action) {
-            self.modify_state(action);
+    pub fn reset(&mut self) {
+        self.on_play = Piece::P1;
+        for piece in self.map.iter_mut() {
+            *piece = Piece::Empty;
         }
     }
 
-    /// Performs a legal action on this state and returns as a new state, or error if the action was malformed.
-    pub fn play(&self, action: Action) -> Result<State, String> {
-        if self.is_in_bounds(&action.position) && self.is_legal_move(&action) {
-            Ok(self.advance_state(&action))
-        }
-        else {
-            Err("Not a legal move.".to_string())
+    /// Checks the action and performs it on the state, changing state in-place.
+    pub fn play_mut(&mut self, action: &Action) {
+        if self.is_in_bounds(&action.position) && self.is_legal_move(action) {
+            self.modify_state(action);
         }
     }
 
@@ -75,7 +55,7 @@ impl State {
 
     /// Reports the current state of the game.
     /// Returns the winner.
-    pub fn check_winner(&self, on_play: Piece) -> Piece {
+    pub fn check_winner(&self) -> Piece {
         let mut winner = self.check_lines();
         if self.terminal() && winner == Piece::Empty {
             winner = Piece::Draw;
@@ -93,31 +73,15 @@ impl State {
 impl State {
     // PRIVATE
 
-    /// Determines if the vector is in bounds of the play area.
-    /// Play area is of size mxn with indicies between 0..m and 0..n
     fn is_in_bounds(&self, vector: &Vector2) -> bool {
         let dim = self.map.dim();
         vector.x >= 0 && vector.x < dim.0 as i32 &&
         vector.y >= 0 && vector.y < dim.1 as i32
     }
     
-    /// When playing only legal moves can be performed.
     fn is_legal_move(&self, action: &Action) -> bool {
         let index = action.position.index();
         self.map[[index.0, index.1]] == Piece::Empty
-    }
-
-    /// Creates a new state by arbitrarily applying some action.
-    fn advance_state(&self, action: &Action) -> State {
-        let mut map = self.map.clone();
-        let index = action.position.index();
-        map[[index.0, index.1]] = action.player;
-        let on_play = match action.player {
-            Piece::P1 => Piece::P2,
-            Piece::P2 => Piece::P1,
-            _ => Piece::Empty,
-        };
-        State { map, on_play }
     }
 
     /// In-place morphing of the state.
@@ -177,16 +141,16 @@ impl State {
 
     fn check_diag(map: &Array2<Piece>) -> Piece {
         let dim = map.dim();
-        let first = map[[0, dim.1]];
+        let first = map[[0, dim.1 - 1]];
         if first == Piece::Empty {
             return Piece::Empty;
         }
         let mut j = dim.1;
         for i in 0..dim.0 {
+            j -= 1;
             if map[[i, j]] != first {
                 return Piece::Empty;
             }
-            j -= 1;
         }
         first
     }
