@@ -10,9 +10,9 @@ pub struct Game {
     player:     Array1<QLearningAgent>,
     board:      State,
     rng:        RandomNumberGenerator,
-    epsilon:    Value,
     eta:        Value,
     gamma:      Value,
+    pub epsilon:    Value,
 }
 
 impl Game {
@@ -80,6 +80,7 @@ impl Game {
 
         winner
     }
+
 
     /// Lets the current agent take its turn.
     /// Returns the winning piece and action taken.
