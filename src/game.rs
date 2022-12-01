@@ -30,19 +30,20 @@ impl Game {
         Game { player, board, rng, epsilon, eta, gamma }
     }
 
+    /// Resets the board in-place.
     pub fn reset(&mut self) {
         self.board.reset();
     }
 
     /// Plays out a single game, returning the winner.
-    pub fn play(&mut self, print: bool, agent_player: Piece, human_player: Piece) -> Piece {
+    pub fn play(&mut self, print: bool, agent_player: Piece, _human_player: Piece) -> Piece {
         // Stores all of the states and vectors of a game.
         let mut state_history = Vec::<State>::with_capacity(10);
         let mut action_history = Vec::<Action>::with_capacity(9);
         
         state_history.push(self.board.clone());
         let mut winner = Piece::Empty;
-        
+
         while winner == Piece::Empty {
             // agent_turn mutates the board state in-place
             let on_play = self.board.on_play();
@@ -50,9 +51,6 @@ impl Game {
                 if agent_player == on_play {
                     self.agent_turn()
                 }
-                //else if human_player == on_play {
-                    //self.agent_turn()
-                //}
                 else {
                     // choose a random move
                     let action = self.player[on_play.to_index()].choose_random_action(&mut self.rng);
@@ -116,10 +114,11 @@ impl Game {
         player.update_q(prev_state, state, action, reward, self.eta, self.gamma)
     }
 
-
+    /// Updates the board state in-place.
+    /// Returns a winner and the reward value for that action.
     fn update_board(board: &mut State, action: &Action) -> (Piece, Value) {
         // Update board and clone it using the chosen action.
-        board.play_mut(&action);
+        board.play_mut(action);
         let winner = board.check_winner();
         let reward = {
             if winner == action.player {

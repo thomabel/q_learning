@@ -14,7 +14,7 @@ impl Vector2 {
         ndarray::Dim((self.x as usize, self.y as usize))
     }
     pub fn distance_ortho(&self, other: &Vector2) -> u32 {
-        (self.x - other.x).abs() as u32 + (self.y - other.y).abs() as u32
+        (self.x - other.x).unsigned_abs() + (self.y - other.y).unsigned_abs()
     }
     pub fn index(&self) -> (usize, usize) {
         (self.x as usize, self.y as usize)

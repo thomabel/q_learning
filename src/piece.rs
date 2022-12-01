@@ -1,3 +1,9 @@
+/*
+Piece is an important enum that represents the state of the game.
+It tracks which player can play a move, which spaces are already taken,
+and who won the game.
+*/
+
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Piece {
     Draw = -1, 

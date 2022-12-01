@@ -9,6 +9,7 @@ mod state;
 mod vector;
 mod game;
 mod piece;
+mod plotter;
 
 fn main() {
     experiment();
@@ -22,42 +23,52 @@ fn experiment() {
     let epsilon = 0.1;
     let eta = 0.1;
     let gamma = 0.9;
-    let print = true;
-    let agent = Piece::P2;
-    let human = Piece::Empty;
     
-    // The players.
+    // Create the board and agents.
     let mut game = game::Game::new(board_size, epsilon, eta, gamma);
 
-    // Tracking stats.
-    let games_to_play = usize::pow(2, 12);
-    let mut p1_win = 0;
-    let mut p2_win = 0;
-    let mut draw = 0;
+    // Define training times.
+    let epochs = 50;
+    let epoch_games = usize::pow(2, 12);
+    let test_games = 10;
+    let mut test_data = Vec::<plotter::QResult>::with_capacity(epochs);
+ 
+    // Who is playing and do we print the games.
+    let print = false;
+    let agent_player = Piece::P1;
+    let human_player = Piece::Empty;
+
+    for _e in 0..epochs {
+        // Training
+        let _train_result = epoch(&mut game, epoch_games, print, agent_player, Piece::Empty);
+
+        // Testing
+        let test_result = epoch(&mut game, test_games, print, agent_player, human_player);
+        test_data.push(test_result);
+    }
+
+    let file_name = format!("{}_{}", agent_player.to_string(), epochs);
+    let title = format!("agent: {}, epochs: {}", agent_player.to_string(), epochs);
+    let _error = plotter::visualize(test_data, file_name, title);
+    
+}
+
+fn epoch(game: &mut game::Game, to_play: usize, print: bool, agent_player: piece::Piece, human_player: piece::Piece) -> plotter::QResult {
+    use crate::piece::Piece;
+    let mut result = plotter::QResult::new(to_play);
 
     // Play the games.
-    for i in 0..games_to_play {
-        println!("---------- Game {} ----------", i);
-        let winner = game.play(print, agent, human);
+    for i in 0..to_play {
+        if print { println!("---------- Game {} ----------", i); }
+        let winner = game.play(print, agent_player, human_player);
         match winner {
-            Piece::P1 => p1_win += 1,
-            Piece::P2 => p2_win += 1,
-            Piece::Draw => draw += 1,
+            Piece::P1 => result.p1_win += 1,
+            Piece::P2 => result.p2_win += 1,
+            Piece::Draw => result.draw += 1,
             _ => ()
         }
         game.reset();
     }
 
-    // Analyze the results.
-    let denom = games_to_play as f32;
-    let p1_ratio = p1_win as f32 / denom * 1000.;
-    let p2_ratio = p2_win as f32 / denom * 1000.;
-    let draw_ratio = draw as f32 / denom * 1000.;
-
-    println!("Total / P1W / P2W / Draw :: {:6} / {} ({:3.3}) / {} ({:3.3}) / {} ({:3.3})", 
-        games_to_play, 
-        p1_win, p1_ratio,
-        p2_win, p2_ratio,
-        draw, draw_ratio
-    );
+    result
 }
