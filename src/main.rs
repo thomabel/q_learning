@@ -22,7 +22,9 @@ fn experiment() {
     let epsilon = 0.1;
     let eta = 0.1;
     let gamma = 0.9;
-    let print = false;
+    let print = true;
+    let agent = Piece::P2;
+    let human = Piece::Empty;
     
     // The players.
     let mut game = game::Game::new(board_size, epsilon, eta, gamma);
@@ -33,10 +35,10 @@ fn experiment() {
     let mut p2_win = 0;
     let mut draw = 0;
 
-    // Plays the games.
+    // Play the games.
     for i in 0..games_to_play {
         println!("---------- Game {} ----------", i);
-        let winner = game.play(print);
+        let winner = game.play(print, agent, human);
         match winner {
             Piece::P1 => p1_win += 1,
             Piece::P2 => p2_win += 1,
@@ -46,12 +48,13 @@ fn experiment() {
         game.reset();
     }
 
+    // Analyze the results.
     let denom = games_to_play as f32;
-    let p1_ratio = p1_win as f32 / denom;
-    let p2_ratio = p2_win as f32 / denom;
-    let draw_ratio = draw as f32 / denom;
+    let p1_ratio = p1_win as f32 / denom * 1000.;
+    let p2_ratio = p2_win as f32 / denom * 1000.;
+    let draw_ratio = draw as f32 / denom * 1000.;
 
-    println!("Total / P1W / P2W / Draw :: {:6} / {} ({}) / {} ({}) / {} ({})", 
+    println!("Total / P1W / P2W / Draw :: {:6} / {} ({:3.3}) / {} ({:3.3}) / {} ({:3.3})", 
         games_to_play, 
         p1_win, p1_ratio,
         p2_win, p2_ratio,

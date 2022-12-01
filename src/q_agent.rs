@@ -27,7 +27,7 @@ impl QLearningAgent {
 
     /// Uses the Q-Table to choose the best action, sometimes choosing a random action.
     pub fn choose_action(&mut self, state: State, rng: &mut RandomNumberGenerator, epsilon: Value) -> Action {
-        // Set up
+        // Mark illegal actions and check if there are any moves left.
         self.update_actions(&state);
         if !Self::legal_actions(&self.actions) {
             panic!("No legal actions");
@@ -41,15 +41,19 @@ impl QLearningAgent {
         }
         // Random action
         else {
-            let len = self.actions.len();
-            loop {
-                let index = rng.range(0, len);
-                let action = self.actions[index];
-                if action.1 {
-                    return action.0
-                }
-            }
+            self.choose_random_action(rng)
+        }
+    }
 
+    /// Chooses an action at random from among the legal actions.
+    pub fn choose_random_action(&self, rng: &mut RandomNumberGenerator) -> Action {
+        let len = self.actions.len();
+        loop {
+            let index = rng.range(0, len);
+            let (action, legal) = self.actions[index];
+            if legal {
+                return action
+            }
         }
     }
 

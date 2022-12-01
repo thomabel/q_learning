@@ -35,16 +35,31 @@ impl Game {
     }
 
     /// Plays out a single game, returning the winner.
-    pub fn play(&mut self, print: bool) -> Piece {
+    pub fn play(&mut self, print: bool, agent_player: Piece, human_player: Piece) -> Piece {
         // Stores all of the states and vectors of a game.
         let mut state_history = Vec::<State>::with_capacity(10);
         let mut action_history = Vec::<Action>::with_capacity(9);
         
+        state_history.push(self.board.clone());
         let mut winner = Piece::Empty;
+        
         while winner == Piece::Empty {
             // agent_turn mutates the board state in-place
-            state_history.push(self.board.clone());
-            let temp = self.agent_turn();
+            let on_play = self.board.on_play();
+            let temp = {
+                if agent_player == on_play {
+                    self.agent_turn()
+                }
+                //else if human_player == on_play {
+                    //self.agent_turn()
+                //}
+                else {
+                    // choose a random move
+                    let action = self.player[on_play.to_index()].choose_random_action(&mut self.rng);
+                    let winner = Self::update_board(&mut self.board, &action).0;
+                    (winner, action)
+                }
+            };
             state_history.push(self.board.clone());
             action_history.push(temp.1);
             winner = temp.0;
@@ -58,7 +73,7 @@ impl Game {
         }
 
         let reward = if winner == Piece::Draw {
-            0.25
+            0.5
         }
         else {
             -0.5
@@ -75,32 +90,18 @@ impl Game {
         let prev_state = self.board.clone();
 
         // Find the current player and get them to choose an action.
-        let on_play = self.board.on_play();
-        let player = &mut self.player[on_play.to_index()];
+        let player = &mut self.player[self.board.on_play().to_index()];
         let action = player.choose_action(prev_state.clone(), &mut self.rng, self.epsilon);
-        
-        // Update board and clone it using the chosen action.
-        self.board.play_mut(&action);
+        let (winner, reward) = Self::update_board(&mut self.board, &action);
         let state = self.board.clone();
-        let winner = state.check_winner();
-        let reward = {
-            if winner == on_play {
-                1.0
-            }
-            else if winner == Piece::Draw {
-                0.5
-            }
-            else {
-                0.0
-            }
-        };
-            
+
         // Update the agent's Q-table
         player.update_q(prev_state, state, &action, reward, self.eta, self.gamma);
 
         (winner, action)
     }
 
+    /// Uses the final played turn of the losing player to update its Q-table.
     fn backprop(&mut self, state_history: Vec<State>, action_history: Vec<Action>, reward: Value) {
         // Get the correct 2 states.
         let mut state_iter = state_history.into_iter().rev();
@@ -111,11 +112,27 @@ impl Game {
         // Get the correct action that was between them.
         let mut action_iter = action_history.iter().rev();
         let action = action_iter.nth(2).unwrap();
-
         let player = &mut self.player[action.player.to_index()];
         player.update_q(prev_state, state, action, reward, self.eta, self.gamma)
     }
 
 
+    fn update_board(board: &mut State, action: &Action) -> (Piece, Value) {
+        // Update board and clone it using the chosen action.
+        board.play_mut(&action);
+        let winner = board.check_winner();
+        let reward = {
+            if winner == action.player {
+                1.0
+            }
+            else if winner == Piece::Draw {
+                0.5
+            }
+            else {
+                0.0
+            }
+        };
+        (winner, reward)
+    }
 
 }
